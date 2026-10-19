@@ -4,8 +4,10 @@ const loadButton = document.querySelector("#load-btn");
 const statusMessage = document.querySelector("#status");
 const notesList = document.querySelector("#notes-list");
 const noteForm = document.querySelector("#note-form");
+const titleInput = document.querySelector("#title-input");
+const bodyInput = document.querySelector("#body-input");
+const submitButton = document.querySelector("#submit-btn");
 
-// Reusable HTTP helper: reject unsuccessful responses and return JSON.
 async function request(url, options = {}) {
   const response = await fetch(url, options);
 
@@ -17,8 +19,10 @@ async function request(url, options = {}) {
     return { data: null, status: response.status };
   }
 
-  const data = await response.json();
-  return { data, status: response.status };
+  return {
+    data: await response.json(),
+    status: response.status
+  };
 }
 
 function showStatus(message, type = "") {
@@ -70,20 +74,58 @@ async function loadNotes() {
     notesList.append(fragment);
     showStatus(`Loaded ${notes.length} notes from the server.`, "success");
   } catch (error) {
-    showStatus(
-      "Sorry, we couldn't load your notes. Check your connection and try again.",
-      "error"
-    );
+    showStatus("Could not load notes. Check your connection.", "error");
     console.error("Load notes failed:", error);
   } finally {
     loadButton.disabled = false;
   }
 }
 
-loadButton.addEventListener("click", loadNotes);
-
-// POST will be implemented in the next task.
-noteForm.addEventListener("submit", (event) => {
+async function createNote(event) {
   event.preventDefault();
-  showStatus("Note creation will be added in the next step.", "loading");
-});
+
+  const title = titleInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  if (!title) {
+    showStatus("Please enter a title.", "error");
+    titleInput.focus();
+    return;
+  }
+
+  if (title.length > 100) {
+    showStatus("The title must be 100 characters or fewer.", "error");
+    return;
+  }
+
+  submitButton.disabled = true;
+  showStatus("Creating note...", "loading");
+
+  try {
+    const { data: note } = await request(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        body,
+        userId: 1
+      })
+    });
+
+    notesList.querySelector(".empty-state")?.remove();
+    notesList.prepend(renderNote(note));
+    noteForm.reset();
+
+    showStatus("Note created successfully!", "success");
+  } catch (error) {
+    showStatus("Could not create note. Please try again.", "error");
+    console.error("Create note failed:", error);
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+loadButton.addEventListener("click", loadNotes);
+noteForm.addEventListener("submit", createNote);
