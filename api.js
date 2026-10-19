@@ -56,7 +56,6 @@ function renderNote(note) {
   item.append(title, body, deleteButton);
   return item;
 }
-}
 
 async function loadNotes() {
   loadButton.disabled = true;
